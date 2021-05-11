@@ -68,7 +68,7 @@ public class Server extends Application implements TicTacToeConstants{
                     
                     // Display this session and increment session number
                     Platform.runLater(() -> {
-                        ta.appendText(new Date() + ": Start a thread for session " + sessionNo + "\n");
+                        ta.appendText(new Date() + ": Start a thread for session " + sessionNo++ + "\n");
                     });
                     
                     // Launch a new thread for this session of 2 players
@@ -118,7 +118,7 @@ public class Server extends Application implements TicTacToeConstants{
                     cell[row][column] = 'X';
                     
                     // Check if Player 1 wins
-                    if(isWon('X')){
+                    if(isWon('X', row, column)){
                         toPlayer1.writeInt(PLAYER1_WON);
                         toPlayer2.writeInt(PLAYER1_WON);
                         // Send player1's selected row and column to player 2
@@ -144,10 +144,16 @@ public class Server extends Application implements TicTacToeConstants{
                     cell[row][column] = 'O';
                     
                     // Check if Player 2 wins
-                    if(isWon('O')){
+                    if(isWon('O', row, column)){
                         toPlayer1.writeInt(PLAYER2_WON);
                         toPlayer2.writeInt(PLAYER2_WON);
                         sendMove(toPlayer1, row, column);
+                    }
+                    else if(isFull()){
+                        toPlayer1.writeInt(DRAW);
+                        toPlayer2.writeInt(DRAW);
+                        sendMove(toPlayer1, row, column);
+                        break;
                     }
                     else{
                         // Notify player 1 to take the turn
@@ -178,70 +184,53 @@ public class Server extends Application implements TicTacToeConstants{
         }
         
         // Determine if the player with the specified token wins
-        private boolean isWon(char token){
+        private boolean isWon(char token, int selectedRow, int selectedColumn){
             int count = 0;
-            // Check all rows
-            for(int i=0;i<ROW;i++){
-                for(int j=0;j<COLUMN;j++){
-                    if(cell[i][j] == token){
-                        count++;
-                    }
-                    else    count = 0;
-                    if(count == 5)  return true;
-                }
+            //check row
+            for(int j = 0; j < COLUMN; j++){
+                if(cell[selectedRow][j] == token) count++;
+                else count = 0;
+                if(count == 5) return true;
             }
             
-            // Check all columns
+            //check column
             count = 0;
-            for(int j=0;j<COLUMN;j++){
-                for(int i=0;i<ROW;i++){
-                    if(cell[i][j] == token){
-                        count ++;
-                    }
-                    else count = 0;
-                    if(count == 5)  return true;
-                }
+            for (int i = 0; i < ROW; i++) {
+                if(cell[i][selectedColumn] == token) count++;
+                else count = 0;
+                if(count == 5) return true;
             }
             
-            // Check major diagonal
+            //check \ (j = i) 
+            int start_i, start_j;
+            if(selectedColumn < selectedRow){
+                start_i = selectedRow - selectedColumn;
+                start_j = 0;
+            }else{
+                start_i = 0;
+                start_j = selectedColumn - selectedRow;
+            }
             count = 0;
-            for(int i=0;i<ROW;i++){
-                for(int j=0;j<COLUMN;j++){
-                    if(cell[i][j] == token){
-                        for(int k=0;k<5;k++){
-                            if(cell[i+k][j+k] == token){
-                                count++;
-                            }
-                            else{
-                                count = 0;
-                                break;
-                            }
-                            if(count == 5) return true;
-                        }
-                    }
-                    else count = 0;
-                }
+            for(int i=start_i, j=start_j; i<ROW && j<COLUMN; i++, j++ ){
+                if(cell[i][j] == token) count++;
+                else count = 0;
+                if(count == 5) return true;
             }
             
-            // Check subdiagonal
+            //check / (j = c - i) c = ROW = COLUMN
+            if(selectedColumn < ROW - selectedRow){
+                start_i = 0;
+                start_j = selectedColumn + selectedRow;
+            }else{
+                start_i = selectedRow - (COLUMN - 1 - selectedColumn);
+                start_j = COLUMN - 1;
+            }
             count = 0;
-            for(int i=0;i<ROW;i++){
-                for(int j=0;j<COLUMN;j++){
-                    if(cell[i][j] == token){
-                        for(int k=0;k<5;k++){
-                            if(cell[i-k][j+k] == token){
-                                count++;
-                            }
-                            else{
-                                count = 0;
-                                break;
-                            }
-                            if(count == 5) return true;
-                        }
-                    }
-                    else count = 0;
-                }
-            }       
+            for(int i=start_i, j=start_j; i<ROW && j>=0; i++,j--){
+                if(cell[i][j] == token) count++;
+                else count = 0;
+                if(count == 5) return true;
+            }
             return false;
         }
     }  
